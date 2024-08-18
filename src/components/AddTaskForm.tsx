@@ -2,6 +2,7 @@ import React from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
+import axios from 'axios';
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,6 @@ const TaskSchema = z.object({
   title: z.string().min(3, { message: "Task title must be at least 3 characters." }),
   description: z.string().optional(),
   reminder: z.date().optional(),
-  
 });
 
 type AddTaskFormProps = {
@@ -34,25 +34,36 @@ export function AddTaskForm({ initialDate }: AddTaskFormProps) {
       title: "",
       description: "",
       reminder: initialReminder
-      
     },
   });
 
   async function onSubmit(data: z.infer<typeof TaskSchema>) {
     try {
+      // Format the reminder date to ISO 8601 string
+      const formattedReminder = data.reminder ? data.reminder.toISOString() : undefined;
+
       // Log the form data to the console
       console.log({
         title: data.title,
         description: data.description,
-        reminder: data.reminder,
-        category : 'task'
+        reminder: formattedReminder,
+        category: 'task'
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Make the Axios request to add the task
+      await axios.post('http://localhost:8000/schedules', {
+        title: data.title,
+        description: data.description,
+        reminder: formattedReminder,
+        category: 'task'
+      });
+
       toast({
         title: "Task added successfully!",
         description: `Task "${data.title}" has been added.`,
       });
+
+      // Reset the form
       form.reset();
     } catch (error) {
       toast({

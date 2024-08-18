@@ -3,12 +3,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { useScheduler } from "../contexts/SchedulerContext";
 
 const SidebarCalendar: React.FC = () => {
-  const { setSelectedDate,setSelectedMonth } = useScheduler();
+  const { setSelectedDate,setSelectedMonth,setViewType } = useScheduler();
   const [localSelectedDate, setLocalSelectedDate] = React.useState<Date | undefined>(undefined);
 
   const handleSelect = (date: Date | undefined) => {
     setLocalSelectedDate(date);
     setSelectedDate(date); // Update the context with the selected date
+    setViewType('month-view')
   };
 
   // Extract month and year from the date
@@ -22,6 +23,7 @@ const SidebarCalendar: React.FC = () => {
   const handleMonthChange = (month: Date) => {
     // Pass the month to the context
     setSelectedMonth(month);
+    setViewType('month-view')
   };
 
   return (

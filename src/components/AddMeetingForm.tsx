@@ -2,6 +2,7 @@ import React from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
+import axios from 'axios';
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -37,23 +38,30 @@ export function AddMeetingForm({ initialDate }: AddMeetingFormProps) {
   async function onSubmit(data: z.infer<typeof MeetingSchema>) {
     try {
       // Log the form data to the console
-      console.log({
+    
+
+      // Send POST request to the FastAPI endpoint
+      const response = await axios.post('http://localhost:8000/schedules', {
         description: data.description,
-        reminder: data.reminder,
+        reminder: data.reminder?.toISOString(), // Convert date to ISO string
         category: 'meeting',
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log(response)
+
+      // Handle successful response
       toast({
         title: "Meeting added successfully!",
         description: `Meeting with description "${data.description}" has been added.`,
       });
       form.reset();
     } catch (error) {
+      // Handle error response
       toast({
         title: "Error!",
         description: "There was an error adding the meeting. Please try again.",
       });
+      console.error("Error adding meeting:", error);
     }
   }
 
