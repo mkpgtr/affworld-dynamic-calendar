@@ -61,7 +61,7 @@ const MonthDetail: React.FC = () => {
           <DialogTitle>
             Details for {selectedDay} {selectedMonth.toLocaleString('default', { month: 'long' })} {year}
           </DialogTitle>
-          <DayDialogTabs />
+          <DayDialogTabs  clickedDate={selectedDay}/>
           <DialogClose>Close</DialogClose>
         </DialogContent>
       </Dialog>
