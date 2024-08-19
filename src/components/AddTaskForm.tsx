@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import Datetime from 'react-datetime';
 import 'react-datetime/css/react-datetime.css';
-import './custom-datetime.css'; // Ensure this path is correct for your project
+import './custom-datetime.css';
 import { useScheduler } from '../contexts/SchedulerContext';
 
 const TaskSchema = z.object({
@@ -20,12 +20,13 @@ const TaskSchema = z.object({
 
 type AddTaskFormProps = {
   initialDate?: string;
+  closeDialog?: () => void;
 };
 
-export function AddTaskForm({ initialDate }: AddTaskFormProps) {
-  const { selectedDate, selectedMonth } = useScheduler();
+export function AddTaskForm({ initialDate, closeDialog }: AddTaskFormProps) {
+  const { updateID, setUpdateID, setDialogOpen } = useScheduler();
+  const isUpdate = !!updateID; // Determine if we are updating
 
-  // Initialize the reminder field with the initialDate
   const initialReminder = initialDate ? new Date(initialDate) : undefined;
 
   const form = useForm<z.infer<typeof TaskSchema>>({
@@ -33,43 +34,68 @@ export function AddTaskForm({ initialDate }: AddTaskFormProps) {
     defaultValues: {
       title: "",
       description: "",
-      reminder: initialReminder
+      reminder: initialReminder,
     },
   });
 
+  useEffect(() => {
+    if (isUpdate && updateID) {
+      // Fetch existing data for update
+      axios.get(`http://localhost:8000/schedules-by-id/${updateID}`)
+        .then(response => {
+          const { title = "", description = "", reminder } = response.data;
+          // Ensure to handle undefined and null values correctly
+          form.setValue("title", title);
+          form.setValue("description", description || "");
+          form.setValue("reminder", reminder ? new Date(reminder) : undefined);
+        })
+        .catch(error => {
+          console.error("Error fetching data for update:", error);
+        });
+    }
+  }, [isUpdate, updateID, form]);
+
   async function onSubmit(data: z.infer<typeof TaskSchema>) {
     try {
-      // Format the reminder date to ISO 8601 string
       const formattedReminder = data.reminder ? data.reminder.toISOString() : undefined;
 
-      // Log the form data to the console
-      console.log({
-        title: data.title,
-        description: data.description,
-        reminder: formattedReminder,
-        category: 'task'
-      });
+      if (isUpdate) {
+        // Update request
+        await axios.put(`http://localhost:8000/schedules/${updateID}`, {
+          title: data.title,
+          description: data.description,
+          reminder: formattedReminder,
+          category: 'task',
+        });
+        toast({
+          title: "Task updated successfully!",
+          description: `Task "${data.title}" has been updated.`,
+        });
+      } else {
+        // Add request
+        await axios.post('http://localhost:8000/schedules', {
+          title: data.title,
+          description: data.description,
+          reminder: formattedReminder,
+          category: 'task',
+        });
+        toast({
+          title: "Task added successfully!",
+          description: `Task "${data.title}" has been added.`,
+        });
+      }
 
-      // Make the Axios request to add the task
-      await axios.post('http://localhost:8000/schedules', {
-        title: data.title,
-        description: data.description,
-        reminder: formattedReminder,
-        category: 'task'
-      });
-
-      toast({
-        title: "Task added successfully!",
-        description: `Task "${data.title}" has been added.`,
-      });
-
-      // Reset the form
       form.reset();
+      setUpdateID(null); // Clear updateID
+      if (closeDialog) closeDialog(); // Close the dialog
+      setDialogOpen(false); // Ensure the dialog is closed
+
     } catch (error) {
       toast({
         title: "Error!",
-        description: "There was an error adding the task. Please try again.",
+        description: "There was an error processing your request. Please try again.",
       });
+      console.error("Error processing task:", error);
     }
   }
 
@@ -129,7 +155,7 @@ export function AddTaskForm({ initialDate }: AddTaskFormProps) {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">Add Task</Button>
+            <Button type="submit" className="w-full">{isUpdate ? 'Update Task' : 'Add Task'}</Button>
           </form>
         </Form>
       </div>

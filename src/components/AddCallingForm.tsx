@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import Datetime from 'react-datetime';
 import 'react-datetime/css/react-datetime.css';
 import './custom-datetime.css'; // Ensure this path is correct for your project
 import { useScheduler } from '../contexts/SchedulerContext';
+import axios from 'axios'; // Import axios
 
 const CallingSchema = z.object({
   description: z.string().optional(),
@@ -17,11 +18,14 @@ const CallingSchema = z.object({
 });
 
 type AddCallingFormProps = {
+  closeDialog?: () => void;
   initialDate?: string;
 };
 
-export function AddCallingForm({ initialDate }: AddCallingFormProps) {
-  const { selectedDate, selectedMonth } = useScheduler();
+export function AddCallingForm({ initialDate, closeDialog }: AddCallingFormProps) {
+  const { updateID, setUpdateID, setDialogOpen } = useScheduler();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [initialData, setInitialData] = useState<{ description?: string; reminder?: Date }>({});
 
   // Initialize the reminder field with the initialDate
   const initialReminder = initialDate ? new Date(initialDate) : undefined;
@@ -34,26 +38,68 @@ export function AddCallingForm({ initialDate }: AddCallingFormProps) {
     },
   });
 
+  // Fetch data for updating if updateID is set
+  useEffect(() => {
+    if (updateID) {
+      const fetchData = async () => {
+        try {
+          const response = await axios.get(`http://localhost:8000/schedules-by-id/${updateID}`);
+          setInitialData(response.data);
+          form.reset({
+            description: response.data.description,
+            reminder: new Date(response.data.reminder),
+          });
+          setIsUpdating(true);
+        } catch (error) {
+          console.error(`Failed to fetch item with id: ${updateID}`, error);
+          toast({
+            title: "Error!",
+            description: "There was an error fetching the call details. Please try again.",
+          });
+        }
+      };
+
+      fetchData();
+    }
+  }, [updateID, form]);
+
   async function onSubmit(data: z.infer<typeof CallingSchema>) {
     try {
-      // Log the form data to the console
-      console.log({
-        description: data.description,
-        reminder: data.reminder,
-        category: 'call',
-      });
+      if (isUpdating) {
+        // Send PUT request to update the existing item
+        await axios.put(`http://localhost:8000/schedules/${updateID}`, {
+          description: data.description,
+          reminder: data.reminder?.toISOString(), // Convert date to ISO string
+          category: 'calling',
+        });
+        toast({
+          title: "Call updated successfully!",
+          description: `Call with description "${data.description}" has been updated.`,
+        });
+      } else {
+        // Send POST request to create a new item
+        await axios.post('http://localhost:8000/schedules', {
+          description: data.description,
+          reminder: data.reminder?.toISOString(), // Convert date to ISO string
+          category: 'calling',
+        });
+        toast({
+          title: "Call added successfully!",
+          description: `Call with description "${data.description}" has been added.`,
+        });
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast({
-        title: "Call added successfully!",
-        description: `Call with description "${data.description}" has been added.`,
-      });
       form.reset();
+      setUpdateID(null); // Clear the updateID after submission
+      closeDialog?.();
+      setDialogOpen(false);
+
     } catch (error) {
       toast({
         title: "Error!",
-        description: "There was an error adding the call. Please try again.",
+        description: "There was an error processing your request. Please try again.",
       });
+      console.error("Error processing call:", error);
     }
   }
 
@@ -100,7 +146,7 @@ export function AddCallingForm({ initialDate }: AddCallingFormProps) {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">Add Call</Button>
+            <Button type="submit" className="w-full">{isUpdating ? "Update Call" : "Add Call"}</Button>
           </form>
         </Form>
       </div>

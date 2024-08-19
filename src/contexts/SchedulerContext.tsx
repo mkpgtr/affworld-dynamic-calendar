@@ -9,6 +9,16 @@ interface SchedulerContextType {
   setSelectedDate: (date: Date | undefined) => void;
   setSelectedMonth: (month: Date) => void;
   viewType: string;
+  setViewType: (viewType: string) => void;
+
+  dialogOpen: boolean;
+  setDialogOpen: (open: boolean) => void;
+  dialogOpenViaDropdown:boolean;
+  setDialogOpenViaDropdown: (open: boolean) => void;
+  currentScheduleId: string | null;
+  setCurrentScheduleId: (id: string | null) => void;
+  updateID: string | null;
+  setUpdateID: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 // Create the context
@@ -16,14 +26,40 @@ const SchedulerContext = createContext<SchedulerContextType | undefined>(undefin
 
 // Create a provider component
 export const SchedulerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const today = new Date();
   const [selectedSection, setSelectedSection] = useState<string>("One");
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [selectedMonth, setSelectedMonth] = useState<Date | undefined>(new Date(2024,7));
-  const [viewType, setViewType] = useState<string>("month-view"); // Default view type
 
+  // Initialize selectedDate and selectedMonth with today's date and current month if they are undefined
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(today);
+  const [selectedMonth, setSelectedMonth] = useState<Date | undefined>(
+    new Date(today.getFullYear(), today.getMonth()) // Start of the current month
+  );
+
+  const [viewType, setViewType] = useState<string>("month-view"); // Default view type
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpenViaDropdown, setDialogOpenViaDropdown] = useState<boolean>(false);
+  const [currentScheduleId, setCurrentScheduleId] = useState<string | null>(null);
+  const [updateID, setUpdateID] = useState<string | null>(null);
 
   return (
-    <SchedulerContext.Provider value={{ selectedSection, setSelectedSection, selectedDate, setSelectedDate,selectedMonth,setSelectedMonth, viewType,setViewType }}>
+    <SchedulerContext.Provider 
+      value={{ 
+        dialogOpen,
+        setDialogOpen,
+        selectedSection, 
+        setSelectedSection, 
+        selectedDate, 
+        setSelectedDate,
+        selectedMonth,
+        setSelectedMonth, 
+        viewType,
+        setViewType,
+        dialogOpenViaDropdown,
+        setDialogOpenViaDropdown,
+        currentScheduleId, setCurrentScheduleId,
+        updateID, setUpdateID
+      }}
+    >
       {children}
     </SchedulerContext.Provider>
   );

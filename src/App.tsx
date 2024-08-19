@@ -5,6 +5,7 @@ import './App.css'
 import Navbar from './components/Navbar'
 import SchedulerContainer from './components/SchedulerContainer'
 import { SchedulerProvider } from './contexts/SchedulerContext'
+import { Toaster } from './components/ui/toaster'
 
 
 function App() {
@@ -13,7 +14,9 @@ function App() {
   return (
     <>
     <SchedulerProvider>
-
+      <Toaster  />
+    
+    
      <Navbar />
      <SchedulerContainer />
     </SchedulerProvider>
