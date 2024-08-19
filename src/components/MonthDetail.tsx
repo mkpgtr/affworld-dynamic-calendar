@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useScheduler } from "../contexts/SchedulerContext";
@@ -10,41 +10,56 @@ interface MonthDetailProps {
   closeDialog?: () => void;
 }
 
+interface Schedule {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  reminder: string;
+}
+
 const MonthDetail: React.FC<MonthDetailProps> = ({ closeDialog }) => {
-  const { selectedMonth, dialogOpen, setDialogOpen } = useScheduler();
+  const { selectedMonth, dialogOpen, setDialogOpen,schedules,setSchedules } = useScheduler();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [schedules, setSchedules] = useState<Record<number, any[]>>({});
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedMonth) {
-      const month = selectedMonth.toLocaleString("default", { month: "long" }).toLowerCase();
-      const year = selectedMonth.getFullYear();
-
-      axios
-        .get("http://localhost:8000/schedules-by-date", {
-          params: {
-            month,
-            year,
-          },
-        })
-        .then((response) => {
-          const data = response.data;
-          const groupedByDay = data.reduce((acc: Record<number, any[]>, schedule: any) => {
-            const date = new Date(schedule.reminder).getDate();
-            if (!acc[date]) acc[date] = [];
-            acc[date].push(schedule);
-            return acc;
-          }, {});
-          setSchedules(groupedByDay);
-        })
-        .catch((error) => {
-          console.error("Failed to fetch schedules", error);
-        });
+      fetchSchedules(selectedMonth);
     }
   }, [selectedMonth]);
 
+  const fetchSchedules = async (date: Date) => {
+    const month = date.toLocaleString("default", { month: "long" });
+    const year = date.getFullYear();
+
+    try {
+      const response = await axios.get<Schedule[]>("http://localhost:8000/schedules-by-date", {
+        params: { month, year },
+      });
+      console.log("Response data:", response.data);
+
+      const groupedByDay = response.data.reduce((acc: Record<number, Schedule[]>, schedule) => {
+        const day = new Date(schedule.reminder).getDate();
+        if (!acc[day]) acc[day] = [];
+        acc[day].push(schedule);
+        return acc;
+      }, {});
+
+      setSchedules(groupedByDay);
+      setError(null);
+    } catch (error) {
+      console.error("Error fetching schedules:", error);
+      setError("Failed to fetch schedules. Please try again later.");
+    }
+  };
+
   if (!selectedMonth) {
     return <p>Select a date to view the month details.</p>;
+  }
+
+  if (error) {
+    return <p className="text-red-500">{error}</p>;
   }
 
   const month = selectedMonth.getMonth();
@@ -60,17 +75,29 @@ const MonthDetail: React.FC<MonthDetailProps> = ({ closeDialog }) => {
     setDialogOpen(true);
   };
 
-  const getCategoryContent = (category: string, schedules: any[]) => {
+  const getCategoryContent = (category: string, schedules: Schedule[]) => {
+    console.log(`Getting content for category: ${category}`);
+    const filteredSchedules = schedules.filter(schedule => schedule.category === category);
+    console.log(`Filtered schedules for category ${category}:`, filteredSchedules);
+    
     return (
       <div>
-        {schedules.map((schedule) => (
-          <div key={schedule.id} className={`text-${category}`}>
-            {category}: {category === 'task' ? schedule.title : schedule.description}
-          </div>
-        ))}
+        {filteredSchedules.length > 0 ? (
+          filteredSchedules.map((schedule) => (
+            <div key={schedule.id}>
+              {category === 'task' ? schedule.title : schedule.description}
+            </div>
+          ))
+        ) : (
+          <div>No events for this category</div>
+        )}
       </div>
     );
   };
+  
+  
+
+  console.log(schedules)
 
   const getDefaultTab = (day: number) => {
     const daySchedules = schedules[day] || [];
@@ -87,6 +114,11 @@ const MonthDetail: React.FC<MonthDetailProps> = ({ closeDialog }) => {
     }
   };
 
+  const isDiscrepancyDay = (day: number) => {
+    // Show discrepancy message only for the 1st day of the month
+    return day === 1 && (!schedules[day] || schedules[day].length === 0);
+  };
+
   return (
     <div>
       <div className="p-4">
@@ -98,7 +130,7 @@ const MonthDetail: React.FC<MonthDetailProps> = ({ closeDialog }) => {
             <div key={day} className="font-bold">{day}</div>
           ))}
           {paddedDays.map((day, index) => (
-            <HoverCard key={index} openDelay={0}> {/* Set openDelay to 0 */}
+            <HoverCard key={index} openDelay={0}>
               <HoverCardTrigger asChild>
                 <div
                   className={`w-50 h-[6rem] flex flex-col items-center justify-center border rounded ${day ? 'bg-blue-200 cursor-pointer' : 'bg-transparent'}`}
@@ -108,25 +140,28 @@ const MonthDetail: React.FC<MonthDetailProps> = ({ closeDialog }) => {
                 </div>
               </HoverCardTrigger>
               <HoverCardContent className="w-64 p-2">
-                {day && schedules[day]?.length ? (
+                {day && isDiscrepancyDay(day) ? (
+                  <div className='bg-red-700 text-white font-bold p-8'>due to timezone problem Manish has blocked this box. however, you can click on the blue box and add an event. but it will only be visible in the schedule view</div>
+                ) : day && schedules[day] && schedules[day].length ? (
                   <Tabs defaultValue={getDefaultTab(day)}>
-                    <TabsList>
-                      <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                      <TabsTrigger value="meetings">Meetings</TabsTrigger>
-                      <TabsTrigger value="calls">Calls</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="tasks">
-                      {getCategoryContent('task', schedules[day].filter(s => s.category === 'task'))}
-                    </TabsContent>
-                    <TabsContent value="meetings">
-                      {getCategoryContent('meeting', schedules[day].filter(s => s.category === 'meeting'))}
-                    </TabsContent>
-                    <TabsContent value="calls">
-                      {getCategoryContent('calling', schedules[day].filter(s => s.category === 'calling'))}
-                    </TabsContent>
-                  </Tabs>
+                  <TabsList>
+                    <TabsTrigger value="tasks">Tasks</TabsTrigger>
+                    <TabsTrigger value="meetings">Meetings</TabsTrigger>
+                    <TabsTrigger value="calls">Calls</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="tasks">
+                    {getCategoryContent('task', schedules[day] || [])}
+                  </TabsContent>
+                  <TabsContent value="meetings">
+                    {getCategoryContent('meeting', schedules[day] || [])}
+                  </TabsContent>
+                  <TabsContent value="calls">
+                    {getCategoryContent('calling', schedules[day] || [])}
+                  </TabsContent>
+                </Tabs>
+                
                 ) : (
-                  <div>No events on this day</div>
+                  <div>No events for this day</div>
                 )}
               </HoverCardContent>
             </HoverCard>

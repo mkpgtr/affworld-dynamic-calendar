@@ -123,7 +123,7 @@ const SchedulerContainer: React.FC = () => {
           </div>
           <div className="space-y-4">
             {/* Sidebar Items */}
-            {["One", "Two", "Three", "Four"].map((section) => (
+            {["One"].map((section) => (
               <div
                 key={section}
                 className={`p-2 bg-white border rounded cursor-pointer ${

@@ -10,17 +10,18 @@ interface UpdateDialogProps {
   onClose: () => void;
   category: string;
   initialData: any; // Adjust the type as needed
+  refetch: () => void;
 }
 
-const UpdateDialog: React.FC<UpdateDialogProps> = ({ open, onClose, category, initialData }) => {
+const UpdateDialog: React.FC<UpdateDialogProps> = ({ open, onClose, category, initialData,refetch }) => {
   const renderForm = () => {
     switch (category) {
       case 'task':
-        return <AddTaskForm initialDate={initialData.reminder} closeDialog={onClose} />;
+        return <AddTaskForm refetch={refetch} initialDate={initialData.reminder} closeDialog={onClose} />;
       case 'meeting':
-        return <AddMeetingForm initialDate={initialData.reminder} closeDialog={onClose} />;
+        return <AddMeetingForm refetch={refetch}  initialDate={initialData.reminder} closeDialog={onClose} />;
       case 'calling':
-        return <AddCallingForm initialDate={initialData.reminder} closeDialog={onClose} />;
+        return <AddCallingForm refetch={refetch}  initialDate={initialData.reminder} closeDialog={onClose} />;
       default:
         return null;
     }

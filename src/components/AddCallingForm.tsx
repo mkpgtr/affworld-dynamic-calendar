@@ -20,10 +20,11 @@ const CallingSchema = z.object({
 type AddCallingFormProps = {
   closeDialog?: () => void;
   initialDate?: string;
+  refetch: () => void;
 };
 
-export function AddCallingForm({ initialDate, closeDialog }: AddCallingFormProps) {
-  const { updateID, setUpdateID, setDialogOpen } = useScheduler();
+export function AddCallingForm({ initialDate, closeDialog,refetch }: AddCallingFormProps) {
+  const { updateID, setUpdateID, setDialogOpen,selectedMonth,fetchSchedules } = useScheduler();
   const [isUpdating, setIsUpdating] = useState(false);
   const [initialData, setInitialData] = useState<{ description?: string; reminder?: Date }>({});
 
@@ -72,6 +73,7 @@ export function AddCallingForm({ initialDate, closeDialog }: AddCallingFormProps
           reminder: data.reminder?.toISOString(), // Convert date to ISO string
           category: 'calling',
         });
+        refetch()
         toast({
           title: "Call updated successfully!",
           description: `Call with description "${data.description}" has been updated.`,
@@ -83,10 +85,16 @@ export function AddCallingForm({ initialDate, closeDialog }: AddCallingFormProps
           reminder: data.reminder?.toISOString(), // Convert date to ISO string
           category: 'calling',
         });
+
+        
+        
         toast({
           title: "Call added successfully!",
           description: `Call with description "${data.description}" has been added.`,
         });
+
+        fetchSchedules(selectedMonth)
+
       }
 
       form.reset();

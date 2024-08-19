@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import axios from "axios";
 
 // Define the type for the context value
 interface SchedulerContextType {
@@ -19,6 +20,19 @@ interface SchedulerContextType {
   setCurrentScheduleId: (id: string | null) => void;
   updateID: string | null;
   setUpdateID: React.Dispatch<React.SetStateAction<string | null>>;
+  
+  schedules: Record<number, Schedule[]>;
+  fetchSchedules: (date: Date) => void;
+  setSchedules : () => void;
+}
+
+// Define the Schedule interface here if it's not imported
+interface Schedule {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  reminder: string;
 }
 
 // Create the context
@@ -41,6 +55,31 @@ export const SchedulerProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [currentScheduleId, setCurrentScheduleId] = useState<string | null>(null);
   const [updateID, setUpdateID] = useState<string | null>(null);
 
+  const [schedules, setSchedules] = useState<Record<number, Schedule[]>>({});
+
+  const fetchSchedules = async (date: Date) => {
+    const month = date.toLocaleString("default", { month: "long" });
+    const year = date.getFullYear();
+
+    try {
+      const response = await axios.get<Schedule[]>("http://localhost:8000/schedules-by-date", {
+        params: { month, year },
+      });
+      console.log("Response data:", response.data);
+
+      const groupedByDay = response.data.reduce((acc: Record<number, Schedule[]>, schedule) => {
+        const day = new Date(schedule.reminder).getDate();
+        if (!acc[day]) acc[day] = [];
+        acc[day].push(schedule);
+        return acc;
+      }, {});
+
+      setSchedules(groupedByDay);
+    } catch (error) {
+      console.error("Error fetching schedules:", error);
+    }
+  };
+
   return (
     <SchedulerContext.Provider 
       value={{ 
@@ -57,7 +96,10 @@ export const SchedulerProvider: React.FC<{ children: ReactNode }> = ({ children 
         dialogOpenViaDropdown,
         setDialogOpenViaDropdown,
         currentScheduleId, setCurrentScheduleId,
-        updateID, setUpdateID
+        updateID, setUpdateID,
+        schedules,
+        setSchedules,
+        fetchSchedules
       }}
     >
       {children}

@@ -11,6 +11,7 @@ import Datetime from 'react-datetime';
 import 'react-datetime/css/react-datetime.css';
 import './custom-datetime.css'; // Ensure this path is correct for your project
 import { useScheduler } from '../contexts/SchedulerContext';
+import { addTimeToReminder } from '../utils';
 
 const MeetingSchema = z.object({
   description: z.string().optional(),
@@ -20,10 +21,11 @@ const MeetingSchema = z.object({
 interface AddMeetingFormProps {
   closeDialog?: () => void;
   initialDate?: string;
+  refetch: () => void;
 }
 
-const AddMeetingForm: React.FC<AddMeetingFormProps> = ({ closeDialog, initialDate }) => {
-  const { updateID, setUpdateID, setDialogOpen } = useScheduler();
+const AddMeetingForm: React.FC<AddMeetingFormProps> = ({ closeDialog, initialDate,refetch }) => {
+  const { updateID, setUpdateID, setDialogOpen,fetchSchedules,selectedMonth } = useScheduler();
   const [isUpdating, setIsUpdating] = useState(false);
   const [initialData, setInitialData] = useState<{ description?: string; reminder?: Date }>({});
 
@@ -65,6 +67,10 @@ const AddMeetingForm: React.FC<AddMeetingFormProps> = ({ closeDialog, initialDat
 
   async function onSubmit(data: z.infer<typeof MeetingSchema>) {
     try {
+
+      
+     
+
       if (isUpdating) {
         // Send PUT request to update the existing item
         await axios.put(`http://localhost:8000/schedules/${updateID}`, {
@@ -76,17 +82,22 @@ const AddMeetingForm: React.FC<AddMeetingFormProps> = ({ closeDialog, initialDat
           title: "Meeting updated successfully!",
           description: `Meeting with description "${data.description}" has been updated.`,
         });
+        refetch()
       } else {
+       
         // Send POST request to create a new item
+     
         await axios.post('http://localhost:8000/schedules', {
           description: data.description,
-          reminder: data.reminder?.toISOString(), // Convert date to ISO string
+          reminder: data.reminder, // Convert date to ISO string
           category: 'meeting',
         });
         toast({
           title: "Meeting added successfully!",
           description: `Meeting with description "${data.description}" has been added.`,
         });
+
+        fetchSchedules(selectedMonth)
       }
 
       form.reset();
@@ -136,7 +147,7 @@ const AddMeetingForm: React.FC<AddMeetingFormProps> = ({ closeDialog, initialDat
                           value={value || ''}
                           onChange={(date) => onChange(date ? new Date(date) : undefined)}
                           dateFormat="YYYY-MM-DD"
-                          timeFormat="HH:mm"
+                          timeFormat="HH:mm:ss"
                           className="mb-2 p-2 border rounded"
                         />
                       )}

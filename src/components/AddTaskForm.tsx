@@ -21,10 +21,11 @@ const TaskSchema = z.object({
 type AddTaskFormProps = {
   initialDate?: string;
   closeDialog?: () => void;
+  refetch?: () => void;
 };
 
-export function AddTaskForm({ initialDate, closeDialog }: AddTaskFormProps) {
-  const { updateID, setUpdateID, setDialogOpen } = useScheduler();
+export function AddTaskForm({ initialDate, closeDialog,refetch }: AddTaskFormProps) {
+  const { updateID, setUpdateID, setDialogOpen,fetchSchedules,selectedMonth } = useScheduler();
   const isUpdate = !!updateID; // Determine if we are updating
 
   const initialReminder = initialDate ? new Date(initialDate) : undefined;
@@ -67,6 +68,7 @@ export function AddTaskForm({ initialDate, closeDialog }: AddTaskFormProps) {
           reminder: formattedReminder,
           category: 'task',
         });
+        refetch()
         toast({
           title: "Task updated successfully!",
           description: `Task "${data.title}" has been updated.`,
@@ -83,6 +85,8 @@ export function AddTaskForm({ initialDate, closeDialog }: AddTaskFormProps) {
           title: "Task added successfully!",
           description: `Task "${data.title}" has been added.`,
         });
+
+        fetchSchedules(selectedMonth)
       }
 
       form.reset();
